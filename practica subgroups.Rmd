@@ -1,0 +1,114 @@
+---
+title: "Practica Subgroups"
+author: "Mouneime El jouhri"
+date: "4/13/2020"
+output: html_document
+---
+
+
+ continuación, cargamos el paquete **rsubgroup**:
+
+```{r}
+library("rsubgroup")
+```
+
+La función principal de este paquete para descubrimiento de subgrupos es **DiscoverSubgroups**, la cual admite, entre otros, los siguientes parámetros:
+
+* **qf**: Función de calidad.
+
+    * **bin**: Binomial-Test
+
+    * **chi2**: Chi-Square-Test
+
+    * **lift**: Lift
+
+    * **ps**: Piatetsky-Shapiro (*por defecto*)
+
+    * **gain**: Gain
+
+    * **relgain**: Relative Gain
+
+    * **wracc**: Weighted Relative Accuracy
+
+* **method**: Algoritmo.
+
+    * **beam**: Beam-Search
+
+    * **bsd**: BSD
+
+    * **sdmap**: SD-Map (*por defecto*)
+
+    * **sdmap-dis**: SD-Map enabling internal disjunctions
+
+* **k**: Número máximo (top-k) de patrones a descubrir.
+
+* **minqual**: Calidad mínima.
+
+* **minsize**: Mínimo tamaño de un subgrupo.
+
+* **attributes**: Lista de atributos a considerar por el algoritmo. Puede ser un vector de nombres de atributos, o NULL si se desea computar todos los atributos.
+
+### Medidas de calidad
+
+Dado que para el descubrimiento de subgrupos se utilizará una muestra del 10% de los registros del dataset, se han de calcular posteriormente las medidas de calidad de algunos de los subgrupos sobre todo el dataset. Para ello se usarán las medidas de calidad **WRAcc**, **Accuracy**, **Precision**, **Lift** y **Significance**. De estas, las que se pueden calcular con el paquete *rsubgroup* son **WRAcc**, **Accuracy (*p*)** y **Lift**, mientras que **Precision** y **Significance** no están implementadas en dicho paquete.
+
+<br>
+
+#### Weighted Relative Accuracy
+
+Esta medida se define como la precisión relativa ponderada de una regla:
+
+$$ WRAcc(Cond \rightarrow Targ) = p(Cond) \ (p(Targ | Cond) - p(Targ)) = \frac{n(Cond)}{n_s} \ \left(\frac{n(Cond \cap Targ)}{n(Cond)} - \frac{n(Targ)}{n_s}\right) $$
+#### Accuracy
+
+Mide la frecuencia relativa de ejemplos que satisfacen la regla completa entre los que satisfacen solo el antecedente.
+
+$$ cnf(Cond \rightarrow Targ) = \frac{n(Cond \cap Targ)}{n(Cond)} $$
+#### Precisión
+
+Mide el balance entre el número de ejemplos clasificados perfectamente y la "rareza" de su distribución:
+
+$$ Q_g(Cond \rightarrow Targ) = \frac{TP}{FP + g} = \frac{n(Cond \cap Targ)}{n(Cond \cap \overline{Targ}) + g} $$
+
+donde g se usa como un parámetro de generalización, configurado entre 0,5 y 100.
+
+#### Lift
+
+Es una medida de correlación que mide cuan alejados están los itemsets de la independencia.
+
+* Si $lift(X \rightarrow Y) < 1$, la ocurrencia de $X$ está negativamente correlacionada con la ocurrencia de $Y$.
+
+* Si $lift(X \rightarrow Y) > 1$, entonces $X$ y $Y$ están positivamente correlacionadas.
+
+* Si $lift(X \rightarrow Y) = 1$, entonces $X$ y $Y$ son independientes.
+
+#### Significance
+
+Esta medida indica la significación de un descubrimiento, si es medida por la razón de verosimilitud de una regla:
+
+$$ Sig(Cond \rightarrow Targ) = 2 \sum_{k=1}^{n_c} n(Cond \cap Targ_k) \cdot log \left(\frac{n(Cond \cap Targ_k)}{n(Targ_k) \frac{n(cond)}{n_s}} \right) $$
+donde $n_c$ es el número de valores de la variable objetivo.
+
+A continuación están implementadas las funciones para calcular cada una de las medidas de calidad:
+
+```{r}
+wracc_f = function(n_s, n_cond, n_targ, n_cond_and_targ) {
+  return((n_cond / n_s) * ((n_cond_and_targ / n_cond) - (n_targ / n_s)))
+}
+
+acc_f = function(n_cond, n_cond_and_targ) {
+  return(n_cond_and_targ / n_cond)
+}
+
+precision_f = function(n_cond_and_targ, n_cond_and_notTarg, g) {
+  return(n_cond_and_targ / (n_cond_and_notTarg + g))
+}
+
+lift_f = function(n_s, n_cond, n_targ, n_cond_or_targ) {
+  return((n_cond_or_targ / (n_s**2)) / ((n_cond / n_s) * (n_targ / n_s)))
+}
+
+significance_f = function(n_s, n_cond, t_targ_and_cond, t_targ) {
+  return(2 * sum(t_targ_and_cond * log(t_targ_and_cond / (t_targ * (n_cond / n_s)))))
+}
+```
